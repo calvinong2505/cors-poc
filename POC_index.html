@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>CORS POC</title>
+  <style>
+    :root {
+      --sakura: #E8A0B4; --sakura-dk: #9C4A6A; --sakura-lt: #FDF0F4;
+      --text: #3D2B35; --text-2: #7A5C6A; --text-3: #B89AAA;
+      --bg: #FDF6F8; --card: #ffffff; --border: rgba(180,120,150,0.22);
+      --green: #6B8E6B; --green-lt: #EEF5EE; --red: #B05070; --red-lt: #FDEDF2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      padding: 24px 18px; max-width: 560px; margin: 0 auto;
+      -webkit-text-size-adjust: 100%;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    h1 span { color: var(--sakura); }
+    .sub { font-size: 13px; color: var(--text-3); margin-bottom: 20px; }
+    .card {
+      background: var(--card); border: 0.5px solid var(--border);
+      border-radius: 14px; padding: 16px; margin-bottom: 14px;
+    }
+    .card-title { font-size: 13px; font-weight: 500; color: var(--text-2); margin-bottom: 10px; }
+    button {
+      background: var(--sakura); color: #fff; border: none;
+      border-radius: 10px; padding: 12px 18px; font-size: 15px;
+      cursor: pointer; min-height: 48px; width: 100%;
+    }
+    button:active { opacity: 0.8; }
+    button.secondary { background: var(--sakura-lt); color: var(--sakura-dk); }
+    input {
+      width: 100%; padding: 12px 14px; font-size: 16px;
+      border: 0.5px solid var(--border); border-radius: 10px;
+      background: var(--card); color: var(--text); min-height: 48px;
+      margin-bottom: 10px;
+    }
+    .result {
+      font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+      background: var(--sakura-lt); border-radius: 8px; padding: 12px;
+      white-space: pre-wrap; word-break: break-word; color: var(--text-2);
+      margin-top: 10px; min-height: 20px;
+    }
+    .status { font-size: 13px; margin-top: 8px; font-weight: 500; }
+    .status.ok  { color: var(--green); }
+    .status.err { color: var(--red); }
+    .item {
+      font-size: 14px; padding: 10px 12px; border-radius: 8px;
+      background: var(--bg); margin-bottom: 6px;
+    }
+    .item small { color: var(--text-3); font-size: 11px; display: block; margin-top: 2px; }
+    .note {
+      font-size: 12px; color: var(--text-3); line-height: 1.6;
+      background: var(--card); border: 0.5px dashed var(--border);
+      border-radius: 10px; padding: 12px; margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>CORS <span>POC</span></h1>
+  <div class="sub">Proving Cloudflare → Apps Script → Sheets</div>
+
+  <div class="note">
+    Before testing: paste your deployed Apps Script <b>/exec</b> URL into the
+    field below (or hard-code it in the script). Then run the three tests in order.
+  </div>
+
+  <div class="card">
+    <div class="card-title">Apps Script URL</div>
+    <input type="text" id="api-url" placeholder="https://script.google.com/macros/s/…/exec">
+  </div>
+
+  <div class="card">
+    <div class="card-title">Test 1 · GET ping (can we read JSON?)</div>
+    <button onclick="testPing()">Run ping</button>
+    <div class="status" id="ping-status"></div>
+    <div class="result" id="ping-result"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Test 2 · POST add (can we write to the Sheet?)</div>
+    <input type="text" id="add-text" placeholder="Type something to save…" value="Hello Barcelona">
+    <button onclick="testAdd()">Save to Sheet</button>
+    <div class="status" id="add-status"></div>
+    <div class="result" id="add-result"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Test 3 · GET list (can we read it back?)</div>
+    <button class="secondary" onclick="testList()">Load items</button>
+    <div class="status" id="list-status"></div>
+    <div id="list-items"></div>
+  </div>
+
+<script>
+  function apiUrl() {
+    return document.getElementById('api-url').value.trim();
+  }
+
+  function setStatus(id, ok, msg) {
+    var el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'status ' + (ok ? 'ok' : 'err');
+  }
+
+  // Test 1: simple GET — no preflight, plain cross-origin request
+  async function testPing() {
+    var url = apiUrl();
+    if (!url) { setStatus('ping-status', false, 'Paste your /exec URL first'); return; }
+    setStatus('ping-status', true, 'Calling…');
+    try {
+      var res = await fetch(url + '?action=ping');
+      var data = await res.json();
+      document.getElementById('ping-result').textContent = JSON.stringify(data, null, 2);
+      setStatus('ping-status', data.ok, data.ok ? '✓ Read works' : 'Returned not-ok');
+    } catch (err) {
+      setStatus('ping-status', false, '✗ ' + err.message + '  (likely CORS — see guide)');
+    }
+  }
+
+  // Test 2: POST with text/plain body — avoids CORS preflight
+  async function testAdd() {
+    var url = apiUrl();
+    if (!url) { setStatus('add-status', false, 'Paste your /exec URL first'); return; }
+    var text = document.getElementById('add-text').value;
+    setStatus('add-status', true, 'Saving…');
+    try {
+      var res = await fetch(url, {
+        method: 'POST',
+        // NOTE: no 'Content-Type: application/json' header on purpose.
+        // A string body defaults to text/plain, which is a "simple request"
+        // and does NOT trigger a CORS preflight. Apps Script reads the raw
+        // body via e.postData.contents and JSON.parses it itself.
+        body: JSON.stringify({ action: 'add', text: text })
+      });
+      var data = await res.json();
+      document.getElementById('add-result').textContent = JSON.stringify(data, null, 2);
+      setStatus('add-status', data.ok, data.ok ? '✓ Write works' : 'Returned not-ok');
+    } catch (err) {
+      setStatus('add-status', false, '✗ ' + err.message + '  (likely CORS — see guide)');
+    }
+  }
+
+  // Test 3: GET list — read the rows back from the Sheet
+  async function testList() {
+    var url = apiUrl();
+    if (!url) { setStatus('list-status', false, 'Paste your /exec URL first'); return; }
+    setStatus('list-status', true, 'Loading…');
+    try {
+      var res = await fetch(url + '?action=list');
+      var data = await res.json();
+      var wrap = document.getElementById('list-items');
+      wrap.innerHTML = '';
+      if (data.ok && data.items.length) {
+        data.items.forEach(function(it) {
+          var d = document.createElement('div');
+          d.className = 'item';
+          d.innerHTML = it.text + '<small>' + it.created + '</small>';
+          wrap.appendChild(d);
+        });
+        setStatus('list-status', true, '✓ ' + data.items.length + ' item(s)');
+      } else {
+        setStatus('list-status', true, 'No items yet — run Test 2 first');
+      }
+    } catch (err) {
+      setStatus('list-status', false, '✗ ' + err.message + '  (likely CORS — see guide)');
+    }
+  }
+</script>
+</body>
+</html>
