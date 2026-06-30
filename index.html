@@ -271,7 +271,7 @@ function openDeadlines(){
       '<div class="body">';
     if(!state.deadlines.length){ h+='<div class="empty">Nothing outstanding. Nicely done.</div>'; }
     else state.deadlines.forEach(function(m){
-      h+='<div class="ms"><span class="box"></span>'+
+      h+='<div class="ms" onclick="openTripTab(\''+m.trip_id+'\',\'milestones\')"><span class="box"></span>'+
         '<div style="flex:1"><div class="ms-name" style="font-weight:600">'+esc(m.destination)+'</div>'+
         '<div style="font-size:12px;color:var(--t2)">'+esc(m.name)+'</div></div>'+
         '<span class="ms-due'+(soon(m.due_date)?' soon':'')+'">'+fmtNice(m.due_date)+'</span></div>';
@@ -282,27 +282,24 @@ function openDeadlines(){
   });
 }
 
-// ---- Open a trip: load itinerary + milestones + bookings + summary ----
+// ---- Open a trip: one bundle call, header renders instantly ----
 function openTrip(tripId){
   state.trip = state.trips.filter(function(t){return t.trip_id===tripId;})[0];
   state.screen='trip'; state.tab='itinerary';
-  document.getElementById('wrap').innerHTML='<div class="spin"></div>';
-  document.getElementById('fab').style.display='none';
-  Promise.all([
-    apiGet('getItinerary',{trip:tripId}),
-    apiGet('getMilestones',{trip:tripId}),
-    apiGet('getBookings',{trip:tripId}),
-    apiGet('getItinerarySummary',{trip:tripId})
-  ]).then(function(res){
-    state.cache.itinerary = res[0].ok?res[0].itinerary:[];
-    state.cache.milestones = res[1].ok?res[1].milestones:[];
-    state.cache.bookings = res[2].ok?res[2].bookings:[];
-    state.cache.summary = res[3].ok?res[3].summary:{total:0,booked:0,pct:0,planned_cost:0};
-    renderTrip();
+  // render the header right away from data we already have; tabs show a spinner
+  state.cache={itinerary:[],milestones:[],bookings:[],summary:{total:0,booked:0,pct:0,planned_cost:0}};
+  renderTrip(true);
+  apiGet('getTripBundle',{trip:tripId}).then(function(d){
+    if(!d.ok){ toast('Error: '+d.error); return; }
+    state.cache.itinerary=d.bundle.itinerary||[];
+    state.cache.milestones=d.bundle.milestones||[];
+    state.cache.bookings=d.bundle.bookings||[];
+    state.cache.summary=d.bundle.summary||{total:0,booked:0,pct:0,planned_cost:0};
+    renderTrip(false);
   }).catch(function(e){ toast('Load failed: '+e.message); });
 }
 
-function renderTrip(){
+function renderTrip(loading){
   var t=state.trip, s=state.cache.summary;
   var nd = state.cache.milestones.filter(function(m){return !m.done;})
     .sort(function(a,b){return (a.due_date||'')>(b.due_date||'')?1:-1;})[0];
@@ -310,22 +307,44 @@ function renderTrip(){
     '<div class="hd-title">'+esc(t.destination)+'</div>'+
     '<div class="hd-sub">'+fmtNice(t.start_date)+' – '+fmtNice(t.end_date)+' · '+esc(t.trip_id)+'</div>'+
     '<div class="hd-stats">'+
-      '<div class="hd-stat"><div class="l">Itinerary</div><div class="v">'+s.booked+'/'+s.total+' booked</div></div>'+
+      '<div class="hd-stat"><div class="l">Itinerary</div><div class="v">'+(loading?'…':s.booked+'/'+s.total+' booked')+'</div></div>'+
       '<div class="hd-stat"><div class="l">Next deadline</div><div class="v">'+
-        (nd?esc(nd.name.split(' ').slice(0,2).join(' '))+' · '+(nd.due_date===today()?'today':fmtNice(nd.due_date)):'All done')+
+        (loading?'…':(nd?esc(nd.name.split(' ').slice(0,2).join(' '))+' · '+(nd.due_date===today()?'today':fmtNice(nd.due_date)):'All done'))+
       '</div></div>'+
     '</div></div>'+
     '<div class="tabs">'+
       tabBtn('itinerary','Itinerary')+tabBtn('milestones','Milestones')+tabBtn('bookings','Bookings')+
-    '</div><div class="body" id="tabbody" style="padding-top:6px"></div>';
+    '</div><div class="body" id="tabbody" style="padding-top:6px">'+(loading?'<div class="spin"></div>':'')+'</div>';
   document.getElementById('wrap').innerHTML=h;
-  renderTab();
+  if(!loading) renderTab();
   var fab=document.getElementById('fab'); fab.style.display='block'; fab.textContent='+';
 }
 function tabBtn(id,label){ return '<div class="tab'+(state.tab===id?' on':'')+'" onclick="switchTab(\''+id+'\')">'+label+'</div>'; }
+
+// open a trip directly on a given tab (used from the deadlines list)
+function openTripTab(tripId,tab){
+  // make sure we have the trip object; trips list is already loaded in state.trips
+  if(!state.trips.length){
+    apiGet('getTrips').then(function(d){ state.trips=d.ok?d.trips:[]; _openTripTab(tripId,tab); });
+  } else _openTripTab(tripId,tab);
+}
+function _openTripTab(tripId,tab){
+  state.trip=state.trips.filter(function(t){return t.trip_id===tripId;})[0];
+  if(!state.trip){ toast('Trip not found'); return; }
+  state.screen='trip'; state.tab=tab||'itinerary';
+  state.cache={itinerary:[],milestones:[],bookings:[],summary:{total:0,booked:0,pct:0,planned_cost:0}};
+  renderTrip(true);
+  apiGet('getTripBundle',{trip:tripId}).then(function(d){
+    if(d.ok){ state.cache.itinerary=d.bundle.itinerary||[]; state.cache.milestones=d.bundle.milestones||[];
+      state.cache.bookings=d.bundle.bookings||[]; state.cache.summary=d.bundle.summary; }
+    renderTrip(false);
+  });
+}
 function switchTab(id){ state.tab=id;
-  document.querySelectorAll('.tab').forEach(function(el){el.classList.remove('on');});
-  event.target.classList.add('on'); renderTab();
+  document.querySelectorAll('.tab').forEach(function(el){
+    el.classList.toggle('on', el.textContent.toLowerCase()===id);
+  });
+  renderTab();
 }
 
 function renderTab(){
