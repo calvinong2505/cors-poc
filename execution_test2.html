@@ -39,16 +39,16 @@
     .summary-txt{font-size:12px;color:var(--text-2);white-space:nowrap;}
     .day-head{font-size:12px;font-weight:700;color:var(--red-dk);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;}
     .stop{border:0.5px solid var(--border);border-radius:10px;padding:11px 12px;margin-bottom:7px;}
-    .stop-top{display:flex;align-items:center;gap:8px;}
-    .stop-time{font-size:12px;color:var(--text-3);width:42px;flex-shrink:0;}
-    .stop-name{font-size:14px;font-weight:600;flex:1;}
-    .pill{font-size:10px;padding:3px 8px;border-radius:4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;}
+    .stop-top{display:flex;align-items:center;gap:10px;}
+    .stop-time{font-size:13px;color:var(--text-2);font-weight:600;min-width:46px;flex-shrink:0;}
+    .stop-name{font-size:14px;font-weight:600;flex:1;min-width:0;}
+    .pill{font-size:10px;padding:3px 8px;border-radius:4px;text-transform:uppercase;font-weight:700;letter-spacing:0.5px;flex-shrink:0;}
     .pill.booked{background:var(--green-lt);color:var(--green);}
     .pill.planned{background:var(--gold-lt);color:var(--gold);}
     .pill.idea{background:#F0ECEC;color:var(--text-3);}
-    .stop-meta{font-size:12px;color:var(--text-2);margin-top:4px;}
-    .chk{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 0;cursor:pointer;}
-    .chk .box{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--text-3);display:flex;align-items:center;justify-content:center;font-size:11px;}
+    .stop-meta{font-size:12px;color:var(--text-2);margin-top:5px;margin-left:56px;}
+    .chk{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 0;cursor:pointer;margin-left:56px;}
+    .chk .box{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--text-3);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
     .chk.done .box{background:var(--green);border-color:var(--green);color:#fff;}
     .chk.done .txt{text-decoration:line-through;color:var(--text-3);}
     .result{font-family:ui-monospace,monospace;font-size:11px;background:var(--red-soft);border-radius:8px;
@@ -158,7 +158,7 @@
         }
         var chkHtml='';
         (it.checklist||[]).forEach(function(c,idx){
-          chkHtml+='<div class="chk'+(c.done?' done':'')+'" onclick="toggleChk(\''+it.item_id+'\','+idx+')">'+
+          chkHtml+='<div class="chk'+(c.done?' done':'')+'" data-chk="'+it.item_id+'-'+idx+'" onclick="toggleChk(\''+it.item_id+'\','+idx+')">'+
             '<span class="box">'+(c.done?'✓':'')+'</span><span class="txt">'+escapeHtml(c.text)+'</span></div>';
         });
         wrap.innerHTML+='<div class="stop">'+
@@ -173,13 +173,27 @@
   }
 
   async function toggleChk(itemId,index){
+    // Optimistic: flip the checkbox visually right now, save in background.
+    var el=document.querySelector('[data-chk="'+itemId+'-'+index+'"]');
+    if(el){
+      var done=!el.classList.contains('done');
+      el.classList.toggle('done',done);
+      el.querySelector('.box').textContent=done?'✓':'';
+    }
     try{
-      var res=await fetch(api(),{method:'POST',body:JSON.stringify({
+      await fetch(api(),{method:'POST',body:JSON.stringify({
         action:'toggleChecklistItem',item_id:itemId,index:index
       })});
-      var data=await res.json();
-      if(data.ok) loadItinerary();
-    }catch(err){alert(err.message);}
+      // no reload — the UI already reflects the change
+    }catch(err){
+      // revert on failure
+      if(el){
+        var was=el.classList.contains('done');
+        el.classList.toggle('done',!was);
+        el.querySelector('.box').textContent=!was?'✓':'';
+      }
+      alert('Could not save: '+err.message);
+    }
   }
 
   function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
