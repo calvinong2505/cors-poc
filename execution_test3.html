@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Execution · Slice 3 · Bookings</title>
+  <style>
+    :root {
+      --red:#DA020E; --red-dk:#A30009; --red-soft:#FCE9EA;
+      --text:#222; --text-2:#6A5C5E; --text-3:#A89A9C;
+      --bg:#FBF7F7; --card:#fff; --border:rgba(218,2,14,0.18);
+      --green:#2E7D32; --green-lt:#E8F3E9; --gold:#C99700; --gold-lt:#FBF3D8;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background:var(--bg);color:var(--text);padding:22px 16px;max-width:600px;margin:0 auto;}
+    h1{font-size:22px;font-weight:800;font-style:italic;text-transform:uppercase;letter-spacing:-0.5px;margin-bottom:2px;}
+    h1 span{color:var(--red);}
+    .sub{font-size:11px;color:var(--text-3);margin-bottom:18px;text-transform:uppercase;letter-spacing:1px;}
+    .card{background:var(--card);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;border-left:3px solid var(--red);}
+    .card-title{font-size:12px;font-weight:700;color:var(--red-dk);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;}
+    label{font-size:12px;color:var(--text-2);display:block;margin:8px 0 4px;}
+    input,select{width:100%;padding:11px 13px;font-size:16px;border:0.5px solid var(--border);
+      border-radius:8px;background:var(--card);color:var(--text);min-height:46px;margin-bottom:6px;}
+    input:focus,select:focus{outline:none;border-color:var(--red);}
+    button{background:var(--red);color:#fff;border:none;border-radius:8px;padding:12px 16px;
+      font-size:14px;cursor:pointer;min-height:46px;width:100%;margin-top:6px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
+    button:active{opacity:.85;}
+    button.secondary{background:var(--red-soft);color:var(--red-dk);}
+    button.small{width:auto;padding:7px 12px;font-size:12px;min-height:auto;margin:0;}
+    .status{font-size:13px;margin-top:8px;font-weight:600;}
+    .status.ok{color:var(--green);} .status.err{color:var(--red);}
+    .row{display:flex;gap:8px;} .row > *{flex:1;}
+    .hide{display:none;}
+    .bk{border:0.5px solid var(--border);border-radius:10px;padding:13px;margin-bottom:9px;}
+    .bk-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+    .bk-kind{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:4px;background:var(--red-soft);color:var(--red-dk);}
+    .bk-title{font-size:15px;font-weight:700;flex:1;}
+    .bk-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;margin-top:6px;}
+    .bk-grid .k{color:var(--text-3);}
+    .bk-grid .v{font-weight:600;}
+    .gate{margin-top:10px;padding:10px;border-radius:8px;display:flex;align-items:center;gap:10px;}
+    .gate.known{background:var(--green-lt);}
+    .gate.unknown{background:var(--gold-lt);}
+    .gate-label{font-size:12px;color:var(--text-2);}
+    .gate-val{font-size:18px;font-weight:800;}
+    .gate.known .gate-val{color:var(--green);}
+    .gate.unknown .gate-val{color:var(--gold);font-size:13px;font-weight:600;font-style:italic;}
+    .conf-link{font-size:12px;color:var(--red);text-decoration:none;margin-top:6px;display:inline-block;}
+  </style>
+</head>
+<body>
+  <h1>MATCH<span>DAY</span> · BOOKINGS</h1>
+  <div class="sub">Execution · Slice 3 · flights, trains, events</div>
+
+  <div class="card">
+    <div class="card-title">Execution API URL</div>
+    <input type="text" id="api" placeholder="https://script.google.com/macros/s/…/exec">
+    <label>Trip ID</label>
+    <input type="text" id="trip" placeholder="barcelona-202608">
+  </div>
+
+  <div class="card">
+    <div class="card-title">Add a booking</div>
+    <label>Kind</label>
+    <select id="b-kind" onchange="renderFields()">
+      <option value="flight">Flight</option>
+      <option value="train">Train</option>
+      <option value="event">Event (e.g. football)</option>
+      <option value="hotel">Hotel</option>
+      <option value="other">Other</option>
+    </select>
+    <div id="fields"></div>
+    <button onclick="saveBooking()">Save booking</button>
+    <div class="status" id="save-status"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Bookings</div>
+    <button class="secondary" onclick="loadBookings()">Load bookings</button>
+    <div class="status" id="load-status"></div>
+    <div id="list" style="margin-top:10px"></div>
+  </div>
+
+<script>
+  function api(){return document.getElementById('api').value.trim();}
+  function trip(){return document.getElementById('trip').value.trim();}
+  function setStatus(id,ok,msg){var e=document.getElementById(id);e.textContent=msg;e.className='status '+(ok?'ok':'err');}
+  function val(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+
+  // Field sets per kind — labels mapped to the underlying schema columns
+  var FIELD_SETS = {
+    flight: [
+      ['provider','Airline','text','e.g. Ryanair'],
+      ['confirmation_ref','Confirmation / PNR','text',''],
+      ['date','Date','date',''],
+      ['location','Terminal','text','e.g. T2'],
+      ['seat','Seat','text','e.g. 14C'],
+      ['time','Boarding','text','e.g. 13:45'],
+      ['end_time','Departure','text','e.g. 14:30'],
+      ['confirmation_link','Confirmation link','text','paste email/PDF link']
+    ],
+    train: [
+      ['provider','Operator','text','e.g. Renfe'],
+      ['confirmation_ref','Confirmation','text',''],
+      ['date','Date','date',''],
+      ['section','Coach','text','e.g. Coach 4'],
+      ['seat','Seat','text',''],
+      ['time','Departure','text','e.g. 09:20'],
+      ['confirmation_link','Confirmation link','text','']
+    ],
+    event: [
+      ['title','Fixture','text','e.g. Barça vs Sevilla'],
+      ['location','Venue','text','e.g. Camp Nou'],
+      ['date','Date','date',''],
+      ['time','Kick-off','text','e.g. 21:00'],
+      ['entrance','Entrance / gate','text','e.g. Gate 14'],
+      ['section','Stand','text','e.g. Lateral'],
+      ['seat','Row + seat','text','e.g. Row 12, Seat 88'],
+      ['confirmation_ref','Ticket ref','text',''],
+      ['confirmation_link','Ticket link','text','']
+    ],
+    hotel: [
+      ['provider','Hotel','text',''],
+      ['confirmation_ref','Confirmation','text',''],
+      ['location','Address','text',''],
+      ['date','Check-in date','date',''],
+      ['time','Check-in time','text','e.g. 15:00'],
+      ['notes','Notes (checkout, wifi)','text','']
+    ],
+    other: [
+      ['title','Title','text',''],
+      ['provider','Provider','text',''],
+      ['confirmation_ref','Confirmation','text',''],
+      ['date','Date','date',''],
+      ['time','Time','text',''],
+      ['notes','Notes','text','']
+    ]
+  };
+
+  // flight & train have a live gate/platform — shown but flagged as on-the-day
+  var GATE_LABEL = { flight:'Gate (assigned on the day)', train:'Platform (assigned on the day)' };
+
+  function renderFields(){
+    var kind=document.getElementById('b-kind').value;
+    var set=FIELD_SETS[kind]||FIELD_SETS.other;
+    var html='';
+    set.forEach(function(f){
+      html+='<label>'+f[1]+'</label><input type="'+f[2]+'" id="f-'+f[0]+'" placeholder="'+(f[3]||'')+'">';
+    });
+    if(GATE_LABEL[kind]){
+      html+='<label>'+GATE_LABEL[kind]+' — leave blank until known</label><input type="text" id="f-platform_gate" placeholder="fill on the day">';
+    }
+    document.getElementById('fields').innerHTML=html;
+  }
+  renderFields();
+
+  async function saveBooking(){
+    if(!api()||!trip()){setStatus('save-status',false,'Enter API URL and Trip ID first');return;}
+    var kind=document.getElementById('b-kind').value;
+    var set=FIELD_SETS[kind]||FIELD_SETS.other;
+    var payload={action:'saveBooking',trip_id:trip(),kind:kind};
+    set.forEach(function(f){ payload[f[0]]=val('f-'+f[0]); });
+    var gate=val('f-platform_gate');
+    if(gate){ payload.platform_gate=gate; payload.gate_known=true; }
+    setStatus('save-status',true,'Saving…');
+    try{
+      var res=await fetch(api(),{method:'POST',body:JSON.stringify(payload)});
+      var data=await res.json();
+      if(data.ok){setStatus('save-status',true,'✓ Saved');loadBookings();}
+      else setStatus('save-status',false,'✗ '+data.error);
+    }catch(err){setStatus('save-status',false,'✗ '+err.message);}
+  }
+
+  async function loadBookings(){
+    if(!api()||!trip()){setStatus('load-status',false,'Enter API URL and Trip ID first');return;}
+    setStatus('load-status',true,'Loading…');
+    try{
+      var res=await fetch(api()+'?action=getBookings&trip='+encodeURIComponent(trip()));
+      var data=await res.json();
+      if(!data.ok){setStatus('load-status',false,'✗ '+data.error);return;}
+      var wrap=document.getElementById('list'); wrap.innerHTML='';
+      if(!data.bookings.length){setStatus('load-status',true,'No bookings yet — add one above');return;}
+      data.bookings.forEach(function(b){ wrap.innerHTML+=renderBooking(b); });
+      setStatus('load-status',true,'✓ '+data.bookings.length+' booking(s)');
+    }catch(err){setStatus('load-status',false,'✗ '+err.message);}
+  }
+
+  function renderBooking(b){
+    var title=b.title||b.provider||b.kind;
+    var rows='';
+    function add(k,v){ if(v) rows+='<div class="k">'+k+'</div><div class="v">'+escapeHtml(v)+'</div>'; }
+    if(b.kind==='flight'){
+      add('Airline',b.provider); add('Ref',b.confirmation_ref); add('Date',b.date);
+      add('Terminal',b.location); add('Seat',b.seat); add('Boarding',b.time); add('Departure',b.end_time);
+    } else if(b.kind==='train'){
+      add('Operator',b.provider); add('Ref',b.confirmation_ref); add('Date',b.date);
+      add('Coach',b.section); add('Seat',b.seat); add('Departs',b.time);
+    } else if(b.kind==='event'){
+      add('Venue',b.location); add('Date',b.date); add('Kick-off',b.time);
+      add('Entrance',b.entrance); add('Stand',b.section); add('Seat',b.seat); add('Ref',b.confirmation_ref);
+    } else if(b.kind==='hotel'){
+      add('Ref',b.confirmation_ref); add('Address',b.location); add('Check-in',(b.date||'')+' '+(b.time||'')); add('Notes',b.notes);
+    } else {
+      add('Provider',b.provider); add('Ref',b.confirmation_ref); add('Date',b.date); add('Time',b.time); add('Notes',b.notes);
+    }
+    var gateHtml='';
+    if(b.kind==='flight'||b.kind==='train'){
+      var lbl=(b.kind==='flight'?'Gate':'Platform');
+      if(b.gate_known && b.platform_gate){
+        gateHtml='<div class="gate known"><span class="gate-label">'+lbl+'</span><span class="gate-val">'+escapeHtml(b.platform_gate)+'</span></div>';
+      } else {
+        gateHtml='<div class="gate unknown"><span class="gate-label">'+lbl+'</span><span class="gate-val">not yet assigned</span>'+
+          '<button class="small secondary" style="margin-left:auto" onclick="promptGate(\''+b.booking_id+'\',\''+lbl+'\')">Set</button></div>';
+      }
+    }
+    var link=b.confirmation_link?'<a class="conf-link" href="'+escapeHtml(b.confirmation_link)+'" target="_blank">Open confirmation →</a>':'';
+    return '<div class="bk"><div class="bk-top"><span class="bk-kind">'+b.kind+'</span><span class="bk-title">'+escapeHtml(title)+'</span></div>'+
+      '<div class="bk-grid">'+rows+'</div>'+gateHtml+link+'</div>';
+  }
+
+  async function promptGate(bookingId,label){
+    var g=prompt('Enter '+label+':');
+    if(g===null||!g.trim())return;
+    try{
+      await fetch(api(),{method:'POST',body:JSON.stringify({action:'setGate',booking_id:bookingId,platform_gate:g.trim()})});
+      loadBookings();
+    }catch(err){alert(err.message);}
+  }
+
+  function escapeHtml(s){var d=document.createElement('div');d.textContent=(s===undefined||s===null)?'':s;return d.innerHTML;}
+</script>
+</body>
+</html>
