@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Matchday Trips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#B81E22; --red-2:#A01B20; --red-3:#8A1418;
+    --red-soft:#FBEAEA; --red-line:#F0E0E0;
+    --ink:#1A1A1A; --t1:#222; --t2:#6A5C5E; --t3:#A89A9C;
+    --bg:#F7F4F4; --card:#fff; --line:#F2EAEA;
+    --green:#2E7D32; --green-soft:#EAF3EA;
+    --gold:#B07D00; --gold-soft:#FBF3D8;
+    --r:12px; --r-lg:16px; --shadow:0 2px 10px rgba(160,27,32,0.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'Mulish',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);
+    color:var(--t1);-webkit-text-size-adjust:100%;min-height:100vh;overscroll-behavior-y:none;}
+  .wrap{max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+  /* Header */
+  .hd{background:var(--red);background-image:linear-gradient(135deg,#C42127 0%,var(--red-2) 100%);
+    color:#fff;padding:20px 20px 26px;position:relative;}
+  .hd-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:0.82;}
+  .hd-title{font-size:25px;font-weight:800;letter-spacing:-0.4px;margin-top:3px;}
+  .hd-sub{font-size:13px;opacity:0.85;margin-top:3px;}
+  .hd-back{font-size:13px;font-weight:600;opacity:0.85;cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-bottom:8px;}
+  .hd-stats{display:flex;gap:8px;margin-top:16px;}
+  .hd-stat{flex:1;background:rgba(255,255,255,0.15);border-radius:10px;padding:10px 12px;}
+  .hd-stat .l{font-size:11px;opacity:0.82;}
+  .hd-stat .v{font-size:15px;font-weight:700;margin-top:1px;}
+
+  /* Body */
+  .body{flex:1;padding:16px;}
+  .body.pull{margin-top:-16px;}
+
+  /* Cards */
+  .card{background:var(--card);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);
+    border:1px solid var(--line);margin-bottom:11px;}
+  .card.tap{cursor:pointer;transition:transform .08s;}
+  .card.tap:active{transform:scale(0.99);}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .card-title{font-size:18px;font-weight:700;color:var(--ink);}
+  .card-sub{font-size:13px;color:var(--t2);margin-top:3px;}
+  .card-foot{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+
+  /* Pills */
+  .pill{font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:4px 9px;border-radius:6px;white-space:nowrap;flex-shrink:0;}
+  .pill.planning,.pill.idea{background:#F3EFEF;color:#A89A9A;}
+  .pill.booked{background:var(--green-soft);color:var(--green);}
+  .pill.planned{background:var(--gold-soft);color:var(--gold);}
+  .pill.upcoming{background:var(--red-soft);color:var(--red-2);}
+  .pill.active{background:var(--green-soft);color:var(--green);}
+  .pill.done{background:#EFEFEF;color:#999;}
+
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .dot.red{background:var(--red);} .dot.gold{background:var(--gold);} .dot.green{background:var(--green);} .dot.grey{background:#C9BCBC;}
+  .foot-label{font-size:13px;color:#444;font-weight:600;}
+  .foot-due{margin-left:auto;font-size:12px;font-weight:700;color:var(--t2);}
+  .foot-due.soon{color:var(--red);}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;padding:14px 16px 2px;background:var(--bg);position:sticky;top:0;z-index:5;}
+  .tab{font-size:13px;font-weight:600;color:var(--t2);padding:8px 14px;border-radius:9px;cursor:pointer;}
+  .tab.on{color:var(--red-2);background:var(--card);border:1px solid var(--red-line);font-weight:700;}
+
+  /* Section label */
+  .sec{font-size:12px;font-weight:700;color:var(--red-2);text-transform:uppercase;letter-spacing:0.5px;margin:14px 2px 8px;}
+
+  /* Itinerary stop */
+  .stop{background:var(--card);border-radius:var(--r);padding:13px 14px;box-shadow:0 1px 6px rgba(160,27,32,0.06);
+    border:1px solid var(--line);margin-bottom:8px;}
+  .stop-top{display:flex;align-items:center;gap:10px;}
+  .stop-time{font-size:13px;font-weight:700;color:#666;min-width:44px;}
+  .stop-name{font-size:15px;font-weight:600;flex:1;color:var(--ink);min-width:0;}
+  .stop-meta{font-size:12px;color:var(--t2);margin-left:54px;margin-top:5px;}
+  .chk{display:flex;align-items:center;gap:9px;font-size:13px;padding:5px 0;cursor:pointer;margin-left:54px;}
+  .chk .box{width:18px;height:18px;border-radius:5px;border:1.5px solid #C9BCBC;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:.12s;}
+  .chk.done .box{background:var(--green);border-color:var(--green);color:#fff;}
+  .chk.done .txt{text-decoration:line-through;color:var(--t3);}
+
+  /* Milestone row */
+  .ms{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:var(--r);padding:13px 14px;
+    box-shadow:0 1px 6px rgba(160,27,32,0.06);border:1px solid var(--line);margin-bottom:7px;cursor:pointer;}
+  .ms .box{width:19px;height:19px;border-radius:50%;border:1.5px solid #C9BCBC;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:.12s;}
+  .ms.done .box{background:var(--green);border-color:var(--green);color:#fff;}
+  .ms-name{font-size:14px;font-weight:500;flex:1;color:var(--t1);}
+  .ms.done .ms-name{color:var(--t3);text-decoration:line-through;}
+  .ms-due{font-size:12px;font-weight:700;color:var(--t2);white-space:nowrap;}
+  .ms-due.soon{color:var(--red);}
+
+  /* Booking */
+  .bk{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:0 1px 6px rgba(160,27,32,0.06);
+    border:1px solid var(--line);margin-bottom:9px;}
+  .bk-top{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .bk-kind{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-radius:6px;background:var(--red-soft);color:var(--red-2);}
+  .bk-title{font-size:15px;font-weight:700;flex:1;}
+  .bk-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font-size:13px;}
+  .bk-grid .k{color:var(--t3);} .bk-grid .v{font-weight:600;text-align:right;}
+  .gate{margin-top:11px;padding:11px 13px;border-radius:10px;display:flex;align-items:center;gap:10px;}
+  .gate.known{background:var(--green-soft);} .gate.unknown{background:var(--gold-soft);}
+  .gate .l{font-size:12px;color:var(--t2);font-weight:600;}
+  .gate.known .v{font-size:19px;font-weight:800;color:var(--green);margin-left:auto;}
+  .gate.unknown .v{font-size:13px;font-weight:600;font-style:italic;color:var(--gold);margin-left:auto;}
+  .conf{font-size:12px;color:var(--red);font-weight:700;text-decoration:none;margin-top:8px;display:inline-block;}
+
+  /* Buttons + inputs */
+  .btn{background:var(--red);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;
+    cursor:pointer;width:100%;font-family:inherit;}
+  .btn:active{opacity:.9;}
+  .btn.ghost{background:var(--card);color:var(--red-2);border:1px solid var(--red-line);}
+  .btn.sm{padding:8px 14px;width:auto;font-size:13px;}
+  input,select,textarea{width:100%;padding:12px 13px;font-size:16px;border:1px solid var(--red-line);border-radius:10px;
+    background:var(--card);color:var(--t1);font-family:inherit;margin-bottom:8px;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red);}
+  label{font-size:12px;font-weight:600;color:var(--t2);display:block;margin:6px 0 4px;}
+  .frow{display:flex;gap:8px;} .frow>*{flex:1;}
+
+  /* Progress */
+  .prog{height:7px;background:var(--red-soft);border-radius:4px;overflow:hidden;margin-top:4px;}
+  .prog-fill{height:100%;background:var(--green);transition:width .3s;}
+
+  /* FAB */
+  .fab{position:fixed;bottom:20px;right:calc(50% - 280px + 20px);width:54px;height:54px;border-radius:50%;
+    background:var(--red);color:#fff;border:none;font-size:26px;box-shadow:0 4px 16px rgba(160,27,32,0.4);cursor:pointer;z-index:20;}
+  @media(max-width:600px){.fab{right:20px;}}
+
+  /* Modal */
+  .ov{position:fixed;inset:0;background:rgba(40,20,22,0.5);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+  .ov.on{display:flex;}
+  .sheet{background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:18px 18px 28px;}
+  .sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .sheet-t{font-size:18px;font-weight:800;}
+  .x{font-size:22px;color:var(--t3);cursor:pointer;background:none;border:none;width:40px;height:40px;}
+
+  /* Misc */
+  .empty{text-align:center;padding:36px 16px;color:var(--t3);font-size:14px;}
+  .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);
+    color:#fff;font-size:13px;font-weight:600;padding:10px 18px;border-radius:22px;opacity:0;transition:.25s;z-index:100;pointer-events:none;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .spin{width:22px;height:22px;border:2.5px solid var(--red-soft);border-top-color:var(--red);border-radius:50%;animation:sp .7s linear infinite;margin:30px auto;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .setup{padding:20px;}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="spin" id="boot"></div>
+</div>
+<button class="fab" id="fab" style="display:none" onclick="onFab()">+</button>
+<div class="ov" id="ov" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+// ============================================================
+// Matchday Trips — unified execution app
+// ============================================================
+var API = localStorage.getItem('exec_api') || '';  // set once, remembered
+
+var state = { screen:'trips', trip:null, tab:'itinerary', trips:[], cache:{} };
+
+// ---- API helpers (proven CORS pattern: GET + text/plain POST) ----
+function apiGet(action, params){
+  var q = '?action=' + action;
+  if(params) Object.keys(params).forEach(function(k){ q += '&' + k + '=' + encodeURIComponent(params[k]); });
+  return fetch(API + q).then(function(r){ return r.json(); });
+}
+function apiPost(body){
+  return fetch(API, { method:'POST', body: JSON.stringify(body) }).then(function(r){ return r.json(); });
+}
+
+function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2200); }
+function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+function today(){ return new Date().toISOString().split('T')[0]; }
+function addDays(d,n){ var p=(d||today()).split('-'); var x=new Date(p[0],p[1]-1,p[2]); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; }
+function soon(d){ return d && d <= addDays(today(),3); }
+function fmtNice(d){ if(!d) return ''; var p=d.split('-'); if(p.length!==3) return d;
+  var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return parseInt(p[2])+' '+m[parseInt(p[1])-1]; }
+
+// ---- Boot ----
+window.addEventListener('DOMContentLoaded', function(){
+  if(!API){ renderSetup(); return; }
+  loadTrips();
+});
+
+function renderSetup(){
+  document.getElementById('boot').style.display='none';
+  document.getElementById('wrap').innerHTML =
+    '<div class="hd"><div class="hd-eyebrow">Matchday Trips</div><div class="hd-title">Setup</div></div>'+
+    '<div class="setup"><label>Paste your Execution API URL (ends in /exec)</label>'+
+    '<input type="text" id="api-in" placeholder="https://script.google.com/macros/s/…/exec">'+
+    '<button class="btn" onclick="saveApi()">Save &amp; start</button></div>';
+}
+function saveApi(){
+  var v=document.getElementById('api-in').value.trim();
+  if(!v){ toast('Paste the URL first'); return; }
+  API=v; localStorage.setItem('exec_api',v); loadTrips();
+}
+
+// ---- Load + render trips list ----
+function loadTrips(){
+  document.getElementById('wrap').innerHTML='<div class="spin"></div>';
+  document.getElementById('fab').style.display='none';
+  apiGet('getTrips').then(function(d){
+    if(!d.ok){ toast('Error: '+d.error); return; }
+    state.trips=d.trips; state.screen='trips';
+    // pull deadlines too for the "next action" per trip
+    return apiGet('getDeadlines');
+  }).then(function(d){
+    state.deadlines = (d && d.ok) ? d.deadlines : [];
+    renderTrips();
+  }).catch(function(e){ toast('Load failed: '+e.message); });
+}
+
+function nextDeadlineFor(tripId){
+  var ds = state.deadlines.filter(function(m){ return m.trip_id===tripId; });
+  return ds.length ? ds[0] : null;  // already sorted soonest-first by backend
+}
+
+function renderTrips(){
+  var h = '<div class="hd"><div class="hd-eyebrow">Matchday Trips</div>'+
+    '<div class="hd-title">Your trips</div>'+
+    '<div class="hd-sub">'+state.trips.length+' trip'+(state.trips.length===1?'':'s')+'</div></div>'+
+    '<div class="body pull">';
+  if(!state.trips.length){
+    h += '<div class="empty">No trips yet.<br>Tap + to add your first.</div>';
+  } else {
+    state.trips.forEach(function(t){
+      var nd = nextDeadlineFor(t.trip_id);
+      var dotcls = nd ? (soon(nd.due_date)?'red':'gold') : 'green';
+      h += '<div class="card tap" onclick="openTrip(\''+t.trip_id+'\')">'+
+        '<div class="card-top"><div class="card-title">'+esc(t.destination)+'</div>'+
+        '<span class="pill '+esc(t.status)+'">'+esc(t.status)+'</span></div>'+
+        '<div class="card-sub">'+fmtNice(t.start_date)+' – '+fmtNice(t.end_date)+
+        (t.home_airport?' · from '+esc(t.home_airport):'')+'</div>';
+      if(nd){
+        h += '<div class="card-foot"><span class="dot '+dotcls+'"></span>'+
+          '<span class="foot-label">'+esc(nd.name.length>34?nd.name.slice(0,34)+'…':nd.name)+'</span>'+
+          '<span class="foot-due'+(soon(nd.due_date)?' soon':'')+'">'+
+          (soon(nd.due_date)?(nd.due_date===today()?'due today':'due '+fmtNice(nd.due_date)):fmtNice(nd.due_date))+'</span></div>';
+      } else {
+        h += '<div class="card-foot"><span class="dot green"></span><span class="foot-label">All milestones done</span></div>';
+      }
+      h += '</div>';
+    });
+    // deadlines shortcut
+    if(state.deadlines.length){
+      h += '<div class="sec">Across all trips</div>'+
+        '<div class="card tap" onclick="openDeadlines()"><div class="card-top">'+
+        '<div class="card-title" style="font-size:15px">Deadlines</div>'+
+        '<span class="pill upcoming">'+state.deadlines.length+' open</span></div>'+
+        '<div class="card-sub">Next: '+esc(state.deadlines[0].name.slice(0,30))+' · '+fmtNice(state.deadlines[0].due_date)+'</div></div>';
+    }
+  }
+  h += '</div>';
+  document.getElementById('wrap').innerHTML=h;
+  var fab=document.getElementById('fab'); fab.style.display='block'; fab.textContent='+';
+}
+
+// ---- Cross-trip deadlines screen ----
+function openDeadlines(){
+  state.screen='deadlines';
+  document.getElementById('wrap').innerHTML='<div class="spin"></div>';
+  apiGet('getDeadlines').then(function(d){
+    state.deadlines = d.ok ? d.deadlines : [];
+    var h='<div class="hd"><div class="hd-back" onclick="loadTrips()">‹ Trips</div>'+
+      '<div class="hd-title">Deadlines</div><div class="hd-sub">'+state.deadlines.length+' open · soonest first</div></div>'+
+      '<div class="body">';
+    if(!state.deadlines.length){ h+='<div class="empty">Nothing outstanding. Nicely done.</div>'; }
+    else state.deadlines.forEach(function(m){
+      h+='<div class="ms"><span class="box"></span>'+
+        '<div style="flex:1"><div class="ms-name" style="font-weight:600">'+esc(m.destination)+'</div>'+
+        '<div style="font-size:12px;color:var(--t2)">'+esc(m.name)+'</div></div>'+
+        '<span class="ms-due'+(soon(m.due_date)?' soon':'')+'">'+fmtNice(m.due_date)+'</span></div>';
+    });
+    h+='</div>';
+    document.getElementById('wrap').innerHTML=h;
+    document.getElementById('fab').style.display='none';
+  });
+}
+
+// ---- Open a trip: load itinerary + milestones + bookings + summary ----
+function openTrip(tripId){
+  state.trip = state.trips.filter(function(t){return t.trip_id===tripId;})[0];
+  state.screen='trip'; state.tab='itinerary';
+  document.getElementById('wrap').innerHTML='<div class="spin"></div>';
+  document.getElementById('fab').style.display='none';
+  Promise.all([
+    apiGet('getItinerary',{trip:tripId}),
+    apiGet('getMilestones',{trip:tripId}),
+    apiGet('getBookings',{trip:tripId}),
+    apiGet('getItinerarySummary',{trip:tripId})
+  ]).then(function(res){
+    state.cache.itinerary = res[0].ok?res[0].itinerary:[];
+    state.cache.milestones = res[1].ok?res[1].milestones:[];
+    state.cache.bookings = res[2].ok?res[2].bookings:[];
+    state.cache.summary = res[3].ok?res[3].summary:{total:0,booked:0,pct:0,planned_cost:0};
+    renderTrip();
+  }).catch(function(e){ toast('Load failed: '+e.message); });
+}
+
+function renderTrip(){
+  var t=state.trip, s=state.cache.summary;
+  var nd = state.cache.milestones.filter(function(m){return !m.done;})
+    .sort(function(a,b){return (a.due_date||'')>(b.due_date||'')?1:-1;})[0];
+  var h='<div class="hd"><div class="hd-back" onclick="loadTrips()">‹ Trips</div>'+
+    '<div class="hd-title">'+esc(t.destination)+'</div>'+
+    '<div class="hd-sub">'+fmtNice(t.start_date)+' – '+fmtNice(t.end_date)+' · '+esc(t.trip_id)+'</div>'+
+    '<div class="hd-stats">'+
+      '<div class="hd-stat"><div class="l">Itinerary</div><div class="v">'+s.booked+'/'+s.total+' booked</div></div>'+
+      '<div class="hd-stat"><div class="l">Next deadline</div><div class="v">'+
+        (nd?esc(nd.name.split(' ').slice(0,2).join(' '))+' · '+(nd.due_date===today()?'today':fmtNice(nd.due_date)):'All done')+
+      '</div></div>'+
+    '</div></div>'+
+    '<div class="tabs">'+
+      tabBtn('itinerary','Itinerary')+tabBtn('milestones','Milestones')+tabBtn('bookings','Bookings')+
+    '</div><div class="body" id="tabbody" style="padding-top:6px"></div>';
+  document.getElementById('wrap').innerHTML=h;
+  renderTab();
+  var fab=document.getElementById('fab'); fab.style.display='block'; fab.textContent='+';
+}
+function tabBtn(id,label){ return '<div class="tab'+(state.tab===id?' on':'')+'" onclick="switchTab(\''+id+'\')">'+label+'</div>'; }
+function switchTab(id){ state.tab=id;
+  document.querySelectorAll('.tab').forEach(function(el){el.classList.remove('on');});
+  event.target.classList.add('on'); renderTab();
+}
+
+function renderTab(){
+  var b=document.getElementById('tabbody');
+  if(state.tab==='itinerary') b.innerHTML=itinHtml();
+  else if(state.tab==='milestones') b.innerHTML=msHtml();
+  else b.innerHTML=bkHtml();
+}
+
+// ---- Itinerary tab ----
+function itinHtml(){
+  var items=state.cache.itinerary, s=state.cache.summary;
+  var h='<div class="card" style="padding:13px 15px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--t2)">'+
+    '<span>'+s.booked+' of '+s.total+' booked</span><span>planned '+s.planned_cost+'</span></div>'+
+    '<div class="prog"><div class="prog-fill" style="width:'+s.pct+'%"></div></div></div>';
+  if(!items.length) return h+'<div class="empty">No stops yet. Tap + to add one.</div>';
+  var curDay=null;
+  items.forEach(function(it){
+    if(it.day!==curDay){ curDay=it.day; h+='<div class="sec">Day '+it.day+'</div>'; }
+    h+='<div class="stop"><div class="stop-top">'+
+      '<span class="stop-time">'+esc(it.time||'')+'</span>'+
+      '<span class="stop-name">'+esc(it.name)+'</span>'+
+      '<span class="pill '+esc(it.status)+'">'+esc(it.status)+'</span></div>'+
+      '<div class="stop-meta">'+esc(it.type)+(it.est_cost?' · '+esc(it.currency)+' '+it.est_cost:'')+
+        (it.route_mode?' · '+esc(it.route_mode)+' '+(it.route_mins||'')+'min':'')+'</div>';
+    (it.checklist||[]).forEach(function(c,idx){
+      h+='<div class="chk'+(c.done?' done':'')+'" data-chk="'+it.item_id+'-'+idx+'" onclick="toggleChk(\''+it.item_id+'\','+idx+')">'+
+        '<span class="box">'+(c.done?'✓':'')+'</span><span class="txt">'+esc(c.text)+'</span></div>';
+    });
+    h+='</div>';
+  });
+  return h;
+}
+
+// optimistic checklist toggle (instant UI, background save)
+function toggleChk(itemId,index){
+  var el=document.querySelector('[data-chk="'+itemId+'-'+index+'"]');
+  var nowDone;
+  if(el){ nowDone=!el.classList.contains('done'); el.classList.toggle('done',nowDone); el.querySelector('.box').textContent=nowDone?'✓':''; }
+  // update cache so re-renders keep the state
+  var it=state.cache.itinerary.filter(function(x){return x.item_id===itemId;})[0];
+  if(it&&it.checklist&&it.checklist[index]) it.checklist[index].done=nowDone;
+  apiPost({action:'toggleChecklistItem',item_id:itemId,index:index}).catch(function(){
+    if(el){ el.classList.toggle('done',!nowDone); el.querySelector('.box').textContent=!nowDone?'✓':''; }
+    toast('Could not save');
+  });
+}
+
+// ---- Milestones tab ----
+function msHtml(){
+  var ms=state.cache.milestones.slice().sort(function(a,b){return (a.due_date||'')>(b.due_date||'')?1:-1;});
+  if(!ms.length) return '<div class="empty">No milestones.</div>';
+  var h='';
+  ms.forEach(function(m){
+    h+='<div class="ms'+(m.done?' done':'')+'" data-ms="'+m.milestone_id+'" onclick="toggleMs(\''+m.milestone_id+'\')">'+
+      '<span class="box">'+(m.done?'✓':'')+'</span>'+
+      '<span class="ms-name">'+esc(m.name)+'</span>'+
+      '<span class="ms-due'+(soon(m.due_date)&&!m.done?' soon':'')+'">'+fmtNice(m.due_date)+'</span></div>';
+  });
+  return h;
+}
+function toggleMs(id){
+  var el=document.querySelector('[data-ms="'+id+'"]');
+  var m=state.cache.milestones.filter(function(x){return x.milestone_id===id;})[0];
+  var nowDone=!(m&&m.done);
+  if(m) m.done=nowDone;
+  if(el){ el.classList.toggle('done',nowDone); el.querySelector('.box').textContent=nowDone?'✓':''; }
+  apiPost({action:'updateMilestone',milestone_id:id,changes:{done:nowDone}}).catch(function(){
+    if(m) m.done=!nowDone;
+    if(el){ el.classList.toggle('done',!nowDone); el.querySelector('.box').textContent=!nowDone?'✓':''; }
+    toast('Could not save');
+  });
+}
+
+// ---- Bookings tab ----
+function bkHtml(){
+  var bks=state.cache.bookings;
+  if(!bks.length) return '<div class="empty">No bookings yet. Tap + to add one.</div>';
+  var h='';
+  bks.forEach(function(b){ h+=oneBooking(b); });
+  return h;
+}
+function oneBooking(b){
+  var title=b.title||b.provider||b.kind;
+  var rows='';
+  function add(k,v){ if(v) rows+='<div class="k">'+k+'</div><div class="v">'+esc(v)+'</div>'; }
+  if(b.kind==='flight'){ add('Airline',b.provider); add('Ref',b.confirmation_ref); add('Date',fmtNice(b.date)); add('Terminal',b.location); add('Seat',b.seat); add('Boarding',b.time); add('Departure',b.end_time); }
+  else if(b.kind==='train'){ add('Operator',b.provider); add('Ref',b.confirmation_ref); add('Date',fmtNice(b.date)); add('Coach',b.section); add('Seat',b.seat); add('Departs',b.time); }
+  else if(b.kind==='event'){ add('Venue',b.location); add('Date',fmtNice(b.date)); add('Kick-off',b.time); add('Entrance',b.entrance); add('Stand',b.section); add('Seat',b.seat); add('Ref',b.confirmation_ref); }
+  else if(b.kind==='hotel'){ add('Ref',b.confirmation_ref); add('Address',b.location); add('Check-in',fmtNice(b.date)+' '+(b.time||'')); add('Notes',b.notes); }
+  else { add('Provider',b.provider); add('Ref',b.confirmation_ref); add('Date',fmtNice(b.date)); add('Time',b.time); add('Notes',b.notes); }
+  var gate='';
+  if(b.kind==='flight'||b.kind==='train'){
+    var lbl=(b.kind==='flight'?'Gate':'Platform');
+    if(b.gate_known&&b.platform_gate) gate='<div class="gate known"><span class="l">'+lbl+'</span><span class="v">'+esc(b.platform_gate)+'</span></div>';
+    else gate='<div class="gate unknown"><span class="l">'+lbl+'</span><span class="v">not yet assigned</span>'+
+      '<button class="btn ghost sm" style="margin-left:8px" onclick="setGate(\''+b.booking_id+'\',\''+lbl+'\')">Set</button></div>';
+  }
+  var link=b.confirmation_link?'<a class="conf" href="'+esc(b.confirmation_link)+'" target="_blank">Open confirmation →</a>':'';
+  return '<div class="bk"><div class="bk-top"><span class="bk-kind">'+esc(b.kind)+'</span><span class="bk-title">'+esc(title)+'</span></div>'+
+    '<div class="bk-grid">'+rows+'</div>'+gate+link+'</div>';
+}
+function setGate(id,label){
+  var g=prompt('Enter '+label+':'); if(g===null||!g.trim()) return;
+  // optimistic
+  var b=state.cache.bookings.filter(function(x){return x.booking_id===id;})[0];
+  if(b){ b.platform_gate=g.trim(); b.gate_known=true; renderTab(); }
+  apiPost({action:'setGate',booking_id:id,platform_gate:g.trim()}).catch(function(){ toast('Could not save'); openTrip(state.trip.trip_id); });
+}
+
+// ============================================================
+// FAB — context-aware add
+// ============================================================
+function onFab(){
+  if(state.screen==='trips') addTripForm();
+  else if(state.screen==='trip'){
+    if(state.tab==='bookings') addBookingForm();
+    else if(state.tab==='milestones') addMilestoneForm();
+    else addStopForm();
+  }
+}
+
+function openSheet(html){ document.getElementById('sheet').innerHTML=html; document.getElementById('ov').classList.add('on'); }
+function closeSheet(){ document.getElementById('ov').classList.remove('on'); }
+function sheetHead(title){ return '<div class="sheet-h"><div class="sheet-t">'+title+'</div><button class="x" onclick="closeSheet()">✕</button></div>'; }
+
+// ---- Add trip ----
+function addTripForm(){
+  var s=addDays(today(),42), e=addDays(s,3);
+  openSheet(sheetHead('New trip')+
+    '<label>Destination</label><input id="t-dest" placeholder="e.g. Barcelona">'+
+    '<div class="frow"><div><label>Start</label><input type="date" id="t-start" value="'+s+'"></div>'+
+    '<div><label>End</label><input type="date" id="t-end" value="'+e+'"></div></div>'+
+    '<label>Home airport</label><input id="t-air" value="Manchester">'+
+    '<label>Trip facts (address, wifi, checkout — optional)</label><textarea id="t-facts" rows="2"></textarea>'+
+    '<button class="btn" onclick="saveTrip()">Create trip + milestones</button>');
+}
+function saveTrip(){
+  var dest=document.getElementById('t-dest').value.trim();
+  if(!dest){ toast('Enter a destination'); return; }
+  apiPost({action:'createTrip',destination:dest,
+    start_date:document.getElementById('t-start').value,
+    end_date:document.getElementById('t-end').value,
+    home_airport:document.getElementById('t-air').value.trim(),
+    trip_facts:document.getElementById('t-facts').value.trim()
+  }).then(function(d){
+    if(d.ok){ closeSheet(); toast('Trip created'); loadTrips(); }
+    else toast('Error: '+d.error);
+  }).catch(function(e){ toast('Failed: '+e.message); });
+}
+
+// ---- Add stop ----
+function addStopForm(){
+  openSheet(sheetHead('Add stop')+
+    '<label>Name</label><input id="s-name" placeholder="e.g. Sagrada Família">'+
+    '<div class="frow"><div><label>Day</label><input type="number" id="s-day" value="1" min="1"></div>'+
+    '<div><label>Time</label><input id="s-time" placeholder="10:00"></div></div>'+
+    '<div class="frow"><div><label>Type</label><select id="s-type"><option>sightseeing</option><option>food</option><option>transport</option><option>accommodation</option><option>activity</option></select></div>'+
+    '<div><label>Status</label><select id="s-status"><option>idea</option><option>planned</option><option>booked</option></select></div></div>'+
+    '<div class="frow"><div><label>Est. cost</label><input type="number" id="s-cost"></div>'+
+    '<div><label>Currency</label><input id="s-ccy" value="EUR"></div></div>'+
+    '<label>Checklist (comma-separated)</label><input id="s-chk" placeholder="Book ticket, Climb tower">'+
+    '<button class="btn" onclick="saveStop()">Add stop</button>');
+}
+function saveStop(){
+  var name=document.getElementById('s-name').value.trim();
+  if(!name){ toast('Enter a name'); return; }
+  var chk=document.getElementById('s-chk').value.split(',').map(function(x){return x.trim();}).filter(Boolean).map(function(x){return {text:x,done:false};});
+  apiPost({action:'addItineraryItem',trip_id:state.trip.trip_id,
+    day:parseInt(document.getElementById('s-day').value)||1,
+    time:document.getElementById('s-time').value.trim(),
+    name:name, type:document.getElementById('s-type').value, status:document.getElementById('s-status').value,
+    est_cost:document.getElementById('s-cost').value, currency:document.getElementById('s-ccy').value.trim(),
+    checklist:chk
+  }).then(function(d){ if(d.ok){ closeSheet(); toast('Stop added'); openTrip(state.trip.trip_id); } else toast('Error: '+d.error); });
+}
+
+// ---- Add milestone ----
+function addMilestoneForm(){
+  openSheet(sheetHead('Add milestone')+
+    '<label>Name</label><input id="m-name" placeholder="e.g. Renew travel insurance">'+
+    '<label>Due date</label><input type="date" id="m-due" value="'+addDays(today(),7)+'">'+
+    '<button class="btn" onclick="saveMs()">Add milestone</button>');
+}
+function saveMs(){
+  var name=document.getElementById('m-name').value.trim();
+  if(!name){ toast('Enter a name'); return; }
+  apiPost({action:'addMilestone',trip_id:state.trip.trip_id,name:name,due_date:document.getElementById('m-due').value})
+    .then(function(d){ if(d.ok){ closeSheet(); toast('Milestone added'); openTrip(state.trip.trip_id); } else toast('Error: '+d.error); });
+}
+
+// ---- Add booking (kind-aware) ----
+var BK_FIELDS={
+  flight:[['provider','Airline'],['confirmation_ref','Confirmation / PNR'],['date','Date','date'],['location','Terminal'],['seat','Seat'],['time','Boarding'],['end_time','Departure'],['confirmation_link','Confirmation link']],
+  train:[['provider','Operator'],['confirmation_ref','Confirmation'],['date','Date','date'],['section','Coach'],['seat','Seat'],['time','Departure'],['confirmation_link','Confirmation link']],
+  event:[['title','Fixture'],['location','Venue'],['date','Date','date'],['time','Kick-off'],['entrance','Entrance / gate'],['section','Stand'],['seat','Row + seat'],['confirmation_ref','Ticket ref'],['confirmation_link','Ticket link']],
+  hotel:[['provider','Hotel'],['confirmation_ref','Confirmation'],['location','Address'],['date','Check-in date','date'],['time','Check-in time'],['notes','Notes (checkout, wifi)']],
+  other:[['title','Title'],['provider','Provider'],['confirmation_ref','Confirmation'],['date','Date','date'],['time','Time'],['notes','Notes']]
+};
+var GATE_KINDS={flight:'Gate',train:'Platform'};
+function addBookingForm(){
+  openSheet(sheetHead('Add booking')+
+    '<label>Kind</label><select id="b-kind" onchange="bkFields()"><option value="flight">Flight</option><option value="train">Train</option><option value="event">Event</option><option value="hotel">Hotel</option><option value="other">Other</option></select>'+
+    '<div id="b-fields"></div><button class="btn" onclick="saveBk()">Save booking</button>');
+  bkFields();
+}
+function bkFields(){
+  var kind=document.getElementById('b-kind').value, set=BK_FIELDS[kind]||BK_FIELDS.other, h='';
+  set.forEach(function(f){ h+='<label>'+f[1]+'</label><input type="'+(f[2]||'text')+'" id="bf-'+f[0]+'">'; });
+  if(GATE_KINDS[kind]) h+='<label>'+GATE_KINDS[kind]+' (leave blank until known)</label><input id="bf-platform_gate" placeholder="fill on the day">';
+  document.getElementById('b-fields').innerHTML=h;
+}
+function saveBk(){
+  var kind=document.getElementById('b-kind').value, set=BK_FIELDS[kind]||BK_FIELDS.other;
+  var p={action:'saveBooking',trip_id:state.trip.trip_id,kind:kind};
+  set.forEach(function(f){ var el=document.getElementById('bf-'+f[0]); if(el) p[f[0]]=el.value.trim(); });
+  var g=document.getElementById('bf-platform_gate'); if(g&&g.value.trim()){ p.platform_gate=g.value.trim(); p.gate_known=true; }
+  apiPost(p).then(function(d){ if(d.ok){ closeSheet(); toast('Booking saved'); openTrip(state.trip.trip_id); } else toast('Error: '+d.error); });
+}
+</script>
+</body>
+</html>
