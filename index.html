@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Matchday Trips</title>
+<title>EuroTrip</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -23,7 +23,7 @@
 
   /* Header */
   .hd{background:var(--red);background-image:linear-gradient(135deg,#C42127 0%,var(--red-2) 100%);
-    color:#fff;padding:20px 20px 26px;position:relative;}
+    color:#fff;padding:20px 20px 34px;position:relative;}
   .hd-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:0.82;}
   .hd-title{font-size:25px;font-weight:800;letter-spacing:-0.4px;margin-top:3px;}
   .hd-sub{font-size:13px;opacity:0.85;margin-top:3px;}
@@ -35,7 +35,7 @@
 
   /* Body */
   .body{flex:1;padding:16px;}
-  .body.pull{margin-top:-16px;}
+  .body.pull{margin-top:0;}
 
   /* Cards */
   .card{background:var(--card);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);
@@ -144,6 +144,14 @@
   .spin{width:22px;height:22px;border:2.5px solid var(--red-soft);border-top-color:var(--red);border-radius:50%;animation:sp .7s linear infinite;margin:30px auto;}
   @keyframes sp{to{transform:rotate(360deg);}}
   .setup{padding:20px;}
+
+  /* Page transitions */
+  .wrap{animation:none;}
+  .fade-in{animation:fadeIn .22s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .card,.stop,.ms,.bk{animation:rise .26s ease backwards;}
+  @keyframes rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .quote{font-size:12px;opacity:0.8;margin-top:8px;font-style:italic;font-weight:500;}
 </style>
 </head>
 <body>
@@ -155,11 +163,35 @@
 <div class="toast" id="toast"></div>
 <script>
 // ============================================================
-// Matchday Trips — unified execution app
+// EuroTrip — unified execution app
 // ============================================================
 var API = localStorage.getItem('exec_api') || '';  // set once, remembered
 
 var state = { screen:'trips', trip:null, tab:'itinerary', trips:[], cache:{} };
+
+// playful touches
+var QUOTES = [
+  "Pack light, plan tight. ✈️",
+  "The trip is on. Allez!",
+  "Another city, another adventure.",
+  "Bags packed, boots ready. ⚽",
+  "Wheels up soon. 🛫",
+  "Big match energy for a big trip.",
+  "Adventure mode: engaged.",
+  "Somewhere new is calling. 🌍"
+];
+function pickQuote(){ return QUOTES[Math.floor(Math.random()*QUOTES.length)]; }
+
+var TAB_EMOJI = { itinerary:'🗺️', milestones:'🎯', bookings:'🎟️' };
+
+// paint a screen into the wrap with a fade, and stagger the cards
+function paint(html){
+  var w=document.getElementById('wrap');
+  w.innerHTML=html;
+  w.classList.remove('fade-in'); void w.offsetWidth; w.classList.add('fade-in');
+  var items=w.querySelectorAll('.card,.stop,.ms,.bk');
+  for(var i=0;i<items.length;i++){ items[i].style.animationDelay=(i*0.03)+'s'; }
+}
 
 // ---- API helpers (proven CORS pattern: GET + text/plain POST) ----
 function apiGet(action, params){
@@ -189,7 +221,7 @@ window.addEventListener('DOMContentLoaded', function(){
 function renderSetup(){
   document.getElementById('boot').style.display='none';
   document.getElementById('wrap').innerHTML =
-    '<div class="hd"><div class="hd-eyebrow">Matchday Trips</div><div class="hd-title">Setup</div></div>'+
+    '<div class="hd"><div class="hd-eyebrow">EuroTrip</div><div class="hd-title">Setup</div></div>'+
     '<div class="setup"><label>Paste your Execution API URL (ends in /exec)</label>'+
     '<input type="text" id="api-in" placeholder="https://script.google.com/macros/s/…/exec">'+
     '<button class="btn" onclick="saveApi()">Save &amp; start</button></div>';
@@ -202,17 +234,34 @@ function saveApi(){
 
 // ---- Load + render trips list ----
 function loadTrips(){
+  // if we already have trips loaded, show them instantly and refresh quietly
+  if(state.trips.length){
+    state.screen='trips';
+    renderTrips();
+    refreshTripsQuiet();
+    return;
+  }
   document.getElementById('wrap').innerHTML='<div class="spin"></div>';
   document.getElementById('fab').style.display='none';
   apiGet('getTrips').then(function(d){
     if(!d.ok){ toast('Error: '+d.error); return; }
     state.trips=d.trips; state.screen='trips';
-    // pull deadlines too for the "next action" per trip
     return apiGet('getDeadlines');
   }).then(function(d){
     state.deadlines = (d && d.ok) ? d.deadlines : [];
     renderTrips();
   }).catch(function(e){ toast('Load failed: '+e.message); });
+}
+
+// refresh trips + deadlines in the background without a spinner
+function refreshTripsQuiet(){
+  apiGet('getTrips').then(function(d){
+    if(d.ok) state.trips=d.trips;
+    return apiGet('getDeadlines');
+  }).then(function(d){
+    if(d&&d.ok) state.deadlines=d.deadlines;
+    if(state.screen==='trips') renderTrips();
+  }).catch(function(){});
 }
 
 function nextDeadlineFor(tripId){
@@ -221,12 +270,13 @@ function nextDeadlineFor(tripId){
 }
 
 function renderTrips(){
-  var h = '<div class="hd"><div class="hd-eyebrow">Matchday Trips</div>'+
+  var h = '<div class="hd"><div class="hd-eyebrow">EuroTrip</div>'+
     '<div class="hd-title">Your trips</div>'+
-    '<div class="hd-sub">'+state.trips.length+' trip'+(state.trips.length===1?'':'s')+'</div></div>'+
+    '<div class="hd-sub">'+state.trips.length+' trip'+(state.trips.length===1?'':'s')+'</div>'+
+    '<div class="quote">'+pickQuote()+'</div></div>'+
     '<div class="body pull">';
   if(!state.trips.length){
-    h += '<div class="empty">No trips yet.<br>Tap + to add your first.</div>';
+    h += '<div class="empty">No trips yet. ✈️<br>Tap + to add your first.</div>';
   } else {
     state.trips.forEach(function(t){
       var nd = nextDeadlineFor(t.trip_id);
@@ -250,13 +300,13 @@ function renderTrips(){
     if(state.deadlines.length){
       h += '<div class="sec">Across all trips</div>'+
         '<div class="card tap" onclick="openDeadlines()"><div class="card-top">'+
-        '<div class="card-title" style="font-size:15px">Deadlines</div>'+
+        '<div class="card-title" style="font-size:15px">⏰ Deadlines</div>'+
         '<span class="pill upcoming">'+state.deadlines.length+' open</span></div>'+
         '<div class="card-sub">Next: '+esc(state.deadlines[0].name.slice(0,30))+' · '+fmtNice(state.deadlines[0].due_date)+'</div></div>';
     }
   }
   h += '</div>';
-  document.getElementById('wrap').innerHTML=h;
+  paint(h);
   var fab=document.getElementById('fab'); fab.style.display='block'; fab.textContent='+';
 }
 
@@ -267,9 +317,9 @@ function openDeadlines(){
   apiGet('getDeadlines').then(function(d){
     state.deadlines = d.ok ? d.deadlines : [];
     var h='<div class="hd"><div class="hd-back" onclick="loadTrips()">‹ Trips</div>'+
-      '<div class="hd-title">Deadlines</div><div class="hd-sub">'+state.deadlines.length+' open · soonest first</div></div>'+
+      '<div class="hd-title">⏰ Deadlines</div><div class="hd-sub">'+state.deadlines.length+' open · soonest first</div></div>'+
       '<div class="body">';
-    if(!state.deadlines.length){ h+='<div class="empty">Nothing outstanding. Nicely done.</div>'; }
+    if(!state.deadlines.length){ h+='<div class="empty">Nothing outstanding. Nicely done. 🎉</div>'; }
     else state.deadlines.forEach(function(m){
       h+='<div class="ms" onclick="openTripTab(\''+m.trip_id+'\',\'milestones\')"><span class="box"></span>'+
         '<div style="flex:1"><div class="ms-name" style="font-weight:600">'+esc(m.destination)+'</div>'+
@@ -277,7 +327,7 @@ function openDeadlines(){
         '<span class="ms-due'+(soon(m.due_date)?' soon':'')+'">'+fmtNice(m.due_date)+'</span></div>';
     });
     h+='</div>';
-    document.getElementById('wrap').innerHTML=h;
+    paint(h);
     document.getElementById('fab').style.display='none';
   });
 }
@@ -313,9 +363,9 @@ function renderTrip(loading){
       '</div></div>'+
     '</div></div>'+
     '<div class="tabs">'+
-      tabBtn('itinerary','Itinerary')+tabBtn('milestones','Milestones')+tabBtn('bookings','Bookings')+
+      tabBtn('itinerary','🗺️ Itinerary')+tabBtn('milestones','🎯 Milestones')+tabBtn('bookings','🎟️ Bookings')+
     '</div><div class="body" id="tabbody" style="padding-top:6px">'+(loading?'<div class="spin"></div>':'')+'</div>';
-  document.getElementById('wrap').innerHTML=h;
+  paint(h);
   if(!loading) renderTab();
   var fab=document.getElementById('fab'); fab.style.display='block'; fab.textContent='+';
 }
@@ -342,7 +392,7 @@ function _openTripTab(tripId,tab){
 }
 function switchTab(id){ state.tab=id;
   document.querySelectorAll('.tab').forEach(function(el){
-    el.classList.toggle('on', el.textContent.toLowerCase()===id);
+    el.classList.toggle('on', el.textContent.toLowerCase().indexOf(id)!==-1);
   });
   renderTab();
 }
@@ -360,11 +410,11 @@ function itinHtml(){
   var h='<div class="card" style="padding:13px 15px;margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:var(--t2)">'+
     '<span>'+s.booked+' of '+s.total+' booked</span><span>planned '+s.planned_cost+'</span></div>'+
     '<div class="prog"><div class="prog-fill" style="width:'+s.pct+'%"></div></div></div>';
-  if(!items.length) return h+'<div class="empty">No stops yet. Tap + to add one.</div>';
+  if(!items.length) return h+'<div class="empty">No stops yet. Tap + to add one. 🗺️</div>';
   var curDay=null;
   items.forEach(function(it){
     if(it.day!==curDay){ curDay=it.day; h+='<div class="sec">Day '+it.day+'</div>'; }
-    h+='<div class="stop"><div class="stop-top">'+
+    h+='<div class="stop"><div class="stop-top" onclick="editStop(\''+it.item_id+'\')" style="cursor:pointer">'+
       '<span class="stop-time">'+esc(it.time||'')+'</span>'+
       '<span class="stop-name">'+esc(it.name)+'</span>'+
       '<span class="pill '+esc(it.status)+'">'+esc(it.status)+'</span></div>'+
@@ -396,7 +446,7 @@ function toggleChk(itemId,index){
 // ---- Milestones tab ----
 function msHtml(){
   var ms=state.cache.milestones.slice().sort(function(a,b){return (a.due_date||'')>(b.due_date||'')?1:-1;});
-  if(!ms.length) return '<div class="empty">No milestones.</div>';
+  if(!ms.length) return '<div class="empty">No milestones yet. 🎯</div>';
   var h='';
   ms.forEach(function(m){
     h+='<div class="ms'+(m.done?' done':'')+'" data-ms="'+m.milestone_id+'" onclick="toggleMs(\''+m.milestone_id+'\')">'+
@@ -422,7 +472,7 @@ function toggleMs(id){
 // ---- Bookings tab ----
 function bkHtml(){
   var bks=state.cache.bookings;
-  if(!bks.length) return '<div class="empty">No bookings yet. Tap + to add one.</div>';
+  if(!bks.length) return '<div class="empty">No bookings yet. Tap + to add one. 🎟️</div>';
   var h='';
   bks.forEach(function(b){ h+=oneBooking(b); });
   return h;
@@ -494,6 +544,56 @@ function saveTrip(){
     if(d.ok){ closeSheet(); toast('Trip created'); loadTrips(); }
     else toast('Error: '+d.error);
   }).catch(function(e){ toast('Failed: '+e.message); });
+}
+
+// ---- Edit an existing stop (status, time, cost, etc.) ----
+function editStop(itemId){
+  var it=state.cache.itinerary.filter(function(x){return x.item_id===itemId;})[0];
+  if(!it) return;
+  function opt(v,cur){ return '<option'+(v===cur?' selected':'')+'>'+v+'</option>'; }
+  openSheet(sheetHead('Edit stop')+
+    '<label>Name</label><input id="e-name" value="'+esc(it.name)+'">'+
+    '<div class="frow"><div><label>Day</label><input type="number" id="e-day" value="'+(it.day||1)+'" min="1"></div>'+
+    '<div><label>Time</label><input id="e-time" value="'+esc(it.time||'')+'"></div></div>'+
+    '<div class="frow"><div><label>Type</label><select id="e-type">'+
+      opt('sightseeing',it.type)+opt('food',it.type)+opt('transport',it.type)+opt('accommodation',it.type)+opt('activity',it.type)+'</select></div>'+
+    '<div><label>Status</label><select id="e-status">'+opt('idea',it.status)+opt('planned',it.status)+opt('booked',it.status)+'</select></div></div>'+
+    '<div class="frow"><div><label>Est. cost</label><input type="number" id="e-cost" value="'+esc(it.est_cost||'')+'"></div>'+
+    '<div><label>Currency</label><input id="e-ccy" value="'+esc(it.currency||'EUR')+'"></div></div>'+
+    '<button class="btn" onclick="saveEditStop(\''+itemId+'\')">Save changes</button>'+
+    '<button class="btn ghost" style="margin-top:8px" onclick="delStop(\''+itemId+'\')">Delete stop</button>');
+}
+function saveEditStop(itemId){
+  var changes={
+    name:document.getElementById('e-name').value.trim(),
+    day:parseInt(document.getElementById('e-day').value)||1,
+    time:document.getElementById('e-time').value.trim(),
+    type:document.getElementById('e-type').value,
+    status:document.getElementById('e-status').value,
+    est_cost:document.getElementById('e-cost').value,
+    currency:document.getElementById('e-ccy').value.trim()
+  };
+  // optimistic: update cache + re-render, close sheet immediately
+  var it=state.cache.itinerary.filter(function(x){return x.item_id===itemId;})[0];
+  if(it){ Object.keys(changes).forEach(function(k){ it[k]=changes[k]; }); }
+  recomputeSummary();
+  closeSheet(); renderTrip(false); toast("Stop updated");
+  apiPost({action:'updateItineraryItem',item_id:itemId,changes:changes}).catch(function(){ toast('Could not save'); });
+}
+function delStop(itemId){
+  if(!confirm('Delete this stop?')) return;
+  state.cache.itinerary=state.cache.itinerary.filter(function(x){return x.item_id!==itemId;});
+  recomputeSummary(); closeSheet(); renderTrip(false); toast("Stop deleted");
+  apiPost({action:'deleteItineraryItem',item_id:itemId}).catch(function(){ toast('Could not save'); });
+}
+// keep the progress bar honest after edits
+function recomputeSummary(){
+  var items=state.cache.itinerary;
+  var booked=items.filter(function(x){return x.status==='booked';}).length;
+  var planned=items.reduce(function(s,x){return s+(parseFloat(x.est_cost)||0);},0);
+  state.cache.summary={total:items.length,booked:booked,
+    pct:items.length?Math.round(booked/items.length*100):0,
+    planned_cost:Math.round(planned*100)/100};
 }
 
 // ---- Add stop ----
